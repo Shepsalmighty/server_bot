@@ -4,18 +4,22 @@ import logging
 import time
 import datetime
 from datetime import datetime as dt
-
+import pyotp
 
 
 logger = logging.getLogger(__name__)
 
 class ServerControls:
 
+
+
     def __init__(self, ec2_resource, instance=None):
         self.ec2_resource = ec2_resource
         self.instance = instance
         self.start_time = dt.time(8,0)
         self.end_time = dt.time(18,0)
+        self.hotp = pyotp.HOTP('base32secret3232')
+        self.count = 0
 
     @classmethod
     def from_resource(cls):
@@ -44,7 +48,12 @@ class ServerControls:
                                        instance. When no security groups are specified, the
                                        default security group of the VPC is used.
                :return: A Boto3 Instance object that represents the newly created instance.
+
                """
+        if not self.hotp.verify():
+            print("athentication failed")
+            return False
+        self.count += 1
         try:
             instance_params = {
                 "ImageId": image.id,
@@ -75,6 +84,12 @@ class ServerControls:
         """
                 Terminates an instance and waits for it to be in a terminated state.
                 """
+        if not self.hotp.verify():
+            print("athentication failed")
+            return False
+
+        self.count += 1
+
         if self.instance is None:
             logger.info("No instance to terminate.")
             return
@@ -92,6 +107,7 @@ class ServerControls:
                 err.response["Error"]["Message"],
             )
             raise
+
     def serverUp(self):
 
         if self.instance is None:
@@ -156,7 +172,7 @@ class ServerControls:
             ServerControls.serverDown(self)
 
 
-now = ServerControls.serverAuto(self, current_time)
+# now = ServerControls.serverAuto(self, current_time)
 
 
 if __name__ == '__main__':
